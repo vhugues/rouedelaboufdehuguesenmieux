@@ -60,6 +60,11 @@
     </style>
 </head>
 <body>
+<label for="duration">Duration</label> <input id="duration" type="number" min="0">
+<label for="nbTour">Nb min Tour</label> <input id="nbTour" type="number" min="0">
+
+<br>
+
 <div id="inputs">
 
 </div>
@@ -73,8 +78,19 @@
     <canvas id="canvas" width="800" height="800"></canvas>
 </div>
 <script>
-    const rotationDuration = 15000;
+    const rotationDuration = 1500;
 
+    function storableInput(id, defaultValue){
+        let ell =  document.getElementById(id);
+        ell.value = localStorage.getItem(id) || defaultValue;
+        ell.addEventListener('change', ()=>localStorage.setItem(id, ell.value))
+        ell.addEventListener('input', ()=>localStorage.setItem(id, ell.value));
+        return ell;
+    }
+
+
+    let duration = storableInput('duration', 15);
+    let nbTour = storableInput('nbTour', 10);
     /**
      * @type {HTMLButtonElement}
      */
@@ -89,7 +105,6 @@
      * @type {HTMLCanvasElement}
      */
     let canvas = document.getElementById('canvas');
-    canvas.style.transitionDuration = rotationDuration + 'ms'
 
     /**
      * @typedef {Object} ChoiceModel
@@ -228,7 +243,10 @@
             ctxa.moveTo(400,400)
             ctxa.beginPath();
             ctxa.strokeStyle = choiceDom.color.value
-            ctxa.arc(400, 400, 350, angle * Math.PI * 2 + 0.03, to * Math.PI * 2 - 0.03)
+            marge = Math.min((to-angle)* Math.PI * 2 / 4,0.03)
+                ctxa.arc(400, 400, 350, angle * Math.PI * 2 + marge, to * Math.PI * 2 - marge)
+
+
             ctxa.stroke();
             angle = to;
         }
@@ -248,17 +266,26 @@
         })
     }
 
+    let lastAngle = 0;
+
     startBtn.addEventListener('click', () => {
-        angle = Math.random() * 2 * Math.PI
+        const angle = Math.random() * 2 * Math.PI
         startBtn.style.display = 'none'
         winner.style.display = 'none'
+        let rotationDuration = duration.value * 1000
+        let nbTourValue = nbTour.value * 1
         setTimeout(()=>{
             startBtn.style.display = 'inline-block'
             winner.style.display = 'block'
             winner.innerText = findByAngle(3*Math.PI/2 - angle + Math.PI *4).label.value;
         }, rotationDuration)
-        nbTour = 15;
-        canvas.style.transform = `rotateZ(${(Math.PI * nbTour * 2) + angle}rad)`
+        canvas.style.transitionDuration = '0ms'
+        canvas.style.transform = `rotateZ(${(lastAngle%(2*Math.PI))-2*Math.PI}rad)`
+        setTimeout(()=>{
+            canvas.style.transitionDuration = rotationDuration + 'ms'
+            canvas.style.transform = `rotateZ(${(Math.PI * nbTourValue * 2) + angle}rad)`
+            lastAngle = angle
+        })
     })
     addBtn.addEventListener('click', () => {
         let item = model2dom()
