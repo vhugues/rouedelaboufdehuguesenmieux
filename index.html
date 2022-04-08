@@ -1,9 +1,273 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <title>C'est tous comme la roue de la bouf mais en mieux</title>
+    <meta charset="UTF-8">
+    <title>Roue de Hugues</title>
+    <style>
+        #inputs{
+            margin-bottom: 20px;
+        }
+        #inputs > *{
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        #inputs button{
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition-duration: 0.1s;
+        }
+        #inputs button:hover{
+            text-shadow: 0 0 6px #0000006b;
+        }
+        #inputs > * > *{
+            margin-right: 10px;
+        }
+        input[type="color"]{
+            border: none;
+            padding: 0px;
+            background-color: transparent;
+        }
+
+        input[type="number"]{
+            width: 30px;
+        }
+
+        #canvas {
+            /*transition-duration: 10s;*/
+            pointer-events: none;
+        }
+        .trait {
+            position: relative;
+            width: 3px;
+            background: black;
+            height: 20px;
+            margin: 30px auto -50px auto;
+            z-index: 1000;
+        }
+        .circle-centre {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
 </head>
 <body>
-Ca marche
+<div id="inputs">
 
+</div>
+<button id="add">Ajouter</button>
+<div style="text-align: center; overflow: hidden; position: relative">
+    <div class="circle-centre">
+        <h1 id="winner"></h1>
+        <button id="start">Tourner</button>
+    </div>
+    <div class="trait"></div>
+    <canvas id="canvas" width="800" height="800"></canvas>
+</div>
+<script>
+    const rotationDuration = 15000;
+
+    /**
+     * @type {HTMLButtonElement}
+     */
+    let addBtn = document.getElementById('add');
+    let winner = document.getElementById('winner');
+    /**
+     * @type {HTMLButtonElement}
+     */
+    let startBtn = document.getElementById('start');
+    let inputs = document.getElementById('inputs');
+    /**
+     * @type {HTMLCanvasElement}
+     */
+    let canvas = document.getElementById('canvas');
+    canvas.style.transitionDuration = rotationDuration + 'ms'
+
+    /**
+     * @typedef {Object} ChoiceModel
+     * @property {string} label
+     * @property {string} color
+     * @property {number} weight
+     */
+    /**
+     * @typedef {Object} ChoiceDom
+     * @property {HTMLInputElement} label
+     * @property {HTMLInputElement} color
+     * @property {HTMLInputElement} weight
+     * @property {HTMLSpanElement} percentage
+     * @property {HTMLInputElement} delete
+     * @property {HTMLDivElement} container
+     */
+
+    /**
+     * @type {ChoiceDom[]}
+     */
+    choicesDom = []
+
+    /**
+     * @param {ChoiceDom} item
+     */
+    function onDelete(item) {
+        choicesDom.splice(choicesDom.indexOf(item),1)
+        item.container.remove();
+        refreshAndSave()
+    }
+
+    /**
+     * @param {ChoiceDom} item
+     */
+    function refreshAndSave() {
+        updateCanvas()
+        updatePercentages();
+        localStorage.setItem('choices', JSON.stringify(choicesDom.map(e => dom2model(e))))
+    }
+
+    function updatePercentages(){
+        let weightTotal = choicesDom.reduce((acc, value)=>acc+value.weight.value*1,0);
+        for(let choiceDom of choicesDom){
+            choiceDom.percentage.innerText = (choiceDom.weight.value * 1 / weightTotal * 100).toFixed(2)+ '%'
+        }
+    }
+
+    /**
+     * @param {ChoiceDom} item
+     */
+    function onChange(item) {
+        refreshAndSave()
+    }
+
+    /**
+     * @param {ChoiceModel} model
+     * @return {ChoiceDom}
+     */
+    function model2dom(model = {}) {
+        const label = model.label || '';
+        const color = model.color || randomColor();
+        const weight = model.weight || 1;
+        const container = document.createElement('div');
+        const labelDom = document.createElement('input');
+        const percentageDom = document.createElement('span');
+        labelDom.type = 'text';
+        labelDom.value = label;
+        const colorDom = document.createElement('input');
+        colorDom.type = 'color';
+        colorDom.value = color;
+        const weightDom = document.createElement('input');
+        weightDom.type = 'number';
+        weightDom.min = 0;
+        weightDom.value = weight.toString();
+        const deleteDom = document.createElement('button');
+        deleteDom.innerText = '❌'
+        container.append(colorDom, labelDom, weightDom, percentageDom, deleteDom);
+        /**
+         *
+         * @type {ChoiceDom}
+         */
+        const res = {
+            container,
+            label: labelDom,
+            weight: weightDom,
+            color: colorDom,
+            delete: deleteDom,
+            percentage: percentageDom,
+        }
+        deleteDom.addEventListener('click', () => onDelete(res))
+        colorDom.addEventListener('input', () => onChange(res))
+        colorDom.addEventListener('change', () => onChange(res))
+        labelDom.addEventListener('input', () => onChange(res))
+        labelDom.addEventListener('change', () => onChange(res))
+        weightDom.addEventListener('input', () => onChange(res))
+        weightDom.addEventListener('change', () => onChange(res))
+        return res;
+    }
+
+    /**
+     * @param {ChoiceDom} choiceDom
+     * @return {ChoiceModel}
+     */
+    function dom2model(choiceDom) {
+        return {
+            label: choiceDom.label.value,
+            color: choiceDom.color.value,
+            weight: choiceDom.weight.value,
+        }
+    }
+
+
+    /**
+     * @type {HTMLInputElement[]}
+     */
+    /**
+     * @return {ChoiceDom[]}
+     */
+    function getChoicesCache() {
+        try {
+            return JSON.parse(localStorage.getItem('choices')).map((item)=>model2dom(item))
+        } catch (e) {
+            console.log(e)
+            return []
+        }
+    }
+
+    async function updateCanvas() {
+        const ctxa = canvas.getContext('2d');
+        ctxa.clearRect(0,0,800,800);
+        ctxa.lineWidth = "30"
+        let weightTotal = choicesDom.reduce((acc, value)=>acc+value.weight.value*1,0);
+        let angle = 0; // between 0 an 1
+        for (let choiceDom of choicesDom) {
+            let to = angle + choiceDom.weight.value/weightTotal
+            ctxa.moveTo(400,400)
+            ctxa.beginPath();
+            ctxa.strokeStyle = choiceDom.color.value
+            ctxa.arc(400, 400, 350, angle * Math.PI * 2 + 0.03, to * Math.PI * 2 - 0.03)
+            ctxa.stroke();
+            angle = to;
+        }
+    }
+
+    const randomColor = () => '#' + Math.floor(Math.random() * 256**3).toString(16);
+    choicesDom = getChoicesCache();
+    console.log(choicesDom);
+    inputs.append(...choicesDom.map(e=>e.container))
+
+    function findByAngle(angle){
+        let weightTotal = choicesDom.reduce((acc, value)=>acc+value.weight.value*1,0);
+        let acc = 0;
+        return choicesDom.find((item)=>{
+            acc += item.weight.value*1/weightTotal;
+            return acc * (Math.PI * 2) > angle % (Math.PI * 2);
+        })
+    }
+
+    startBtn.addEventListener('click', () => {
+        angle = Math.random() * 2 * Math.PI
+        startBtn.style.display = 'none'
+        winner.style.display = 'none'
+        setTimeout(()=>{
+            startBtn.style.display = 'inline-block'
+            winner.style.display = 'block'
+            winner.innerText = findByAngle(3*Math.PI/2 - angle + Math.PI *4).label.value;
+        }, rotationDuration)
+        nbTour = 15;
+        canvas.style.transform = `rotateZ(${(Math.PI * nbTour * 2) + angle}rad)`
+    })
+    addBtn.addEventListener('click', () => {
+        let item = model2dom()
+        choicesDom.push(item);
+        inputs.append(item.container)
+        refreshAndSave();
+    })
+    updateCanvas();
+    updatePercentages();
+</script>
 </body>
 </html>
