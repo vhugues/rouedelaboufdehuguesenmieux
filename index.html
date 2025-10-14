@@ -373,7 +373,23 @@
 
     function loadChoices() {
       const stored = localStorage.getItem("choices");
-      const loadedChoices = stored ? JSON.parse(stored) : [];
+      const loadedChoices = stored ? JSON.parse(stored) : [
+			{
+				"label": "Burger",
+				"color": "#fec016",
+				"weight": 6
+			},
+			{
+				"label": "Tacos",
+				"color": "#bf2222",
+				"weight": 3
+			},
+			{
+				"label": "Salade",
+				"color": "#56983e",
+				"weight": 1
+			}
+		];
       // Ensure each choice has a unique ID and a default weight
       loadedChoices.forEach(c => {
           if (!c.id) c.id = Date.now() + Math.random();
