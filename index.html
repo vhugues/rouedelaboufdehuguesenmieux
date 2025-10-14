@@ -411,14 +411,14 @@
     function updateChoicesWithScore() {
         // Calculate the weights based on scores for the wheel
         for(let choice of choices) {
-			choice.weight= Math.max(calculateTotalScore(choice.id), 0);
+			choice.weight= calculateTotalScore(choice.id), 0;
 		}
 		saveChoices();
 		refreshInputs();
     }
 
     function totalWeight(items = choices) {
-      return items.reduce((acc, c) => acc + Number(c.weight), 0);
+      return items.reduce((acc, c) => acc + Math.max(0,Number(c.weight)), 0);
     }
 
     // --- Interface & Drawing ---
@@ -428,7 +428,7 @@
 
       choices.forEach((c, i) => {
         const row = document.createElement("div");
-        const currentWeight = choices.find(wc => wc.id === c.id).weight;
+        const currentWeight = c.weight;
 
         // Simplification: input is now the base weight (c.weight)
         // Percentage is calculated based on the resulting wheel weight (currentWeight)
@@ -436,7 +436,7 @@
           <input type="color" value="${c.color}">
           <input type="text" value="${c.label}" placeholder="Nom">
           <input type="number" value="${c.weight}" min="0" style="width:60px;">
-          <span style="width:60px;">${((currentWeight / totalW) * 100).toFixed(1)}%</span>
+          <span style="width:60px;">${((Math.max(currentWeight,0) / totalW) * 100).toFixed(1)}%</span>
           <button>❌</button>
         `;
         const [color, label, weightInput, , del] = row.children;
@@ -494,7 +494,7 @@
       let acc = 0;
       const total = totalWeight(choices);
       for (let c of choices) {
-        acc += (c.weight / total) * Math.PI * 2;
+        acc += (Math.max(0,c.weight) / total) * Math.PI * 2;
         if (angle % (2 * Math.PI) < acc) return c.label;
       }
       return "";
@@ -645,16 +645,16 @@
     // --- Event Listeners & Init ---
 
     startBtn.addEventListener("click", () => {
-      if (choices.length === 0) {
+      // Use the choices with calculated weights
+      const total = totalWeight(choices);
+	  
+      if (total === 0) {
         winner.textContent = "⚠ Ajoute au moins un choix !";
         winner.classList.add("show");
         return;
       }
-      
+
       winner.classList.remove("show");
-      
-      // Use the choices with calculated weights
-      const total = totalWeight(choices);
       
       // Select a weighted random choice
       let randomValue = Math.random() * total;
@@ -663,6 +663,7 @@
       let winnerFound = false;
       
       for (let c of choices) {
+		  if(c.weight<=0) continue;
           accWeight += c.weight;
           if (randomValue <= accWeight) {
               const segmentAngle = (c.weight / total) * Math.PI * 2;
